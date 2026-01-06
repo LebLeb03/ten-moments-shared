@@ -82,7 +82,7 @@ const PhotoSwipeFeed = ({ eventId }: PhotoSwipeFeedProps) => {
   return (
     <div
       ref={containerRef}
-      className="flex-1 swipe-container hide-scrollbar pt-16 pb-32"
+      className="flex-1 swipe-container hide-scrollbar pt-16 pb-4"
     >
       {photos.map((photo, index) => (
         <div
