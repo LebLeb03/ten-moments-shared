@@ -135,7 +135,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_guest_by_token: {
+        Args: { session_token_value: string }
+        Returns: string
+      }
+      guest_belongs_to_event: {
+        Args: { event_uuid: string; guest_uuid: string }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
