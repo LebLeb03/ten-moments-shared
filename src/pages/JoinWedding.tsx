@@ -26,7 +26,7 @@ const JoinWedding = () => {
   const [eventCode, setEventCode] = useState("");
   const [guestName, setGuestName] = useState("");
   const [loading, setLoading] = useState(false);
-  const { saveGuestSession } = useGuestSession();
+  const { createGuestSession } = useGuestSession();
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -75,37 +75,18 @@ const JoinWedding = () => {
       return;
     }
 
-    // Generate session token
-    const sessionToken = crypto.randomUUID();
+    // Create guest session using anonymous auth
+    const result = await createGuestSession(event.id, validatedName);
 
-    // Create guest record
-    const { data: guest, error: guestError } = await supabase
-      .from("guests")
-      .insert({
-        wedding_event_id: event.id,
-        guest_name: validatedName,
-        session_token: sessionToken,
-      })
-      .select()
-      .single();
-
-    if (guestError) {
+    if (!result.success) {
       toast({
         title: "Error joining",
-        description: "Could not join the event. Please try again.",
+        description: result.error || "Could not join the event. Please try again.",
         variant: "destructive",
       });
       setLoading(false);
       return;
     }
-
-    // Save session locally
-    saveGuestSession({
-      guestId: guest.id,
-      weddingEventId: event.id,
-      sessionToken: sessionToken,
-      guestName: validatedName || undefined,
-    });
 
     toast({
       title: `Welcome to ${event.couple_name} & ${event.partner_name}'s wedding!`,

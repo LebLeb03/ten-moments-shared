@@ -65,7 +65,7 @@ const Guest = () => {
         description: "Please rejoin the wedding.",
         variant: "destructive",
       });
-      clearGuestSession();
+      await clearGuestSession();
       navigate("/join");
       return;
     }
