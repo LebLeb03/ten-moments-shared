@@ -52,24 +52,25 @@ const PhotoUpload = ({
     setUploading(true);
 
     try {
+      // Sanitize filename - remove special characters
+      const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const fileName = `${eventId}/${guestId}/${Date.now()}-${sanitizedName}`;
+      
       // Upload to storage
-      const fileName = `${eventId}/${guestId}/${Date.now()}-${selectedFile.name}`;
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("wedding-photos")
-        .upload(fileName, selectedFile);
+        .upload(fileName, selectedFile, {
+          contentType: selectedFile.type,
+          upsert: false,
+        });
 
       if (uploadError) throw uploadError;
 
-      // Get public URL
-      const { data: urlData } = supabase.storage
-        .from("wedding-photos")
-        .getPublicUrl(fileName);
-
-      // Save photo record
+      // Store the file path (not full URL) - signed URLs will be generated when viewing
       const { error: photoError } = await supabase.from("photos").insert({
         wedding_event_id: eventId,
         guest_id: guestId,
-        image_url: urlData.publicUrl,
+        image_url: fileName, // Store path, not URL
         guest_name: guestName,
       });
 
