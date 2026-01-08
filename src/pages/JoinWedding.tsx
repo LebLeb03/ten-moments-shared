@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useGuestSession } from "@/hooks/useGuestSession";
 import { Button } from "@/components/ui/button";
@@ -8,6 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Leaf, Heart, Camera } from "lucide-react";
+
+// Input validation schemas
+const eventCodeSchema = z.string()
+  .min(1, "Event code is required")
+  .max(20, "Event code must be less than 20 characters")
+  .regex(/^[A-Z0-9-]+$/i, "Event code can only contain letters, numbers, and hyphens");
+
+const guestNameSchema = z.string()
+  .max(100, "Name must be less than 100 characters")
+  .regex(/^[a-zA-Z0-9\s'-]*$/, "Name can only contain letters, numbers, spaces, apostrophes, and hyphens")
+  .optional()
+  .transform(val => val?.trim() || null);
 
 const JoinWedding = () => {
   const [eventCode, setEventCode] = useState("");
@@ -21,11 +34,35 @@ const JoinWedding = () => {
     e.preventDefault();
     setLoading(true);
 
+    // Validate inputs
+    const codeResult = eventCodeSchema.safeParse(eventCode);
+    if (!codeResult.success) {
+      toast({
+        title: "Invalid event code",
+        description: codeResult.error.errors[0].message,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+
+    const nameResult = guestNameSchema.safeParse(guestName);
+    if (!nameResult.success) {
+      toast({
+        title: "Invalid name",
+        description: nameResult.error.errors[0].message,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+    const validatedName = nameResult.data;
+
     // Find the wedding event
     const { data: event, error: eventError } = await supabase
       .from("wedding_events")
       .select("*")
-      .eq("event_code", eventCode.toUpperCase().trim())
+      .eq("event_code", codeResult.data.toUpperCase().trim())
       .maybeSingle();
 
     if (eventError || !event) {
@@ -46,7 +83,7 @@ const JoinWedding = () => {
       .from("guests")
       .insert({
         wedding_event_id: event.id,
-        guest_name: guestName.trim() || null,
+        guest_name: validatedName,
         session_token: sessionToken,
       })
       .select()
@@ -55,7 +92,7 @@ const JoinWedding = () => {
     if (guestError) {
       toast({
         title: "Error joining",
-        description: guestError.message,
+        description: "Could not join the event. Please try again.",
         variant: "destructive",
       });
       setLoading(false);
@@ -67,7 +104,7 @@ const JoinWedding = () => {
       guestId: guest.id,
       weddingEventId: event.id,
       sessionToken: sessionToken,
-      guestName: guestName.trim() || undefined,
+      guestName: validatedName || undefined,
     });
 
     toast({
@@ -113,6 +150,7 @@ const JoinWedding = () => {
                   value={eventCode}
                   onChange={(e) => setEventCode(e.target.value.toUpperCase())}
                   required
+                  maxLength={20}
                   className="bg-background text-center text-lg font-mono tracking-widest uppercase"
                 />
               </div>
@@ -123,6 +161,7 @@ const JoinWedding = () => {
                   placeholder="Guest"
                   value={guestName}
                   onChange={(e) => setGuestName(e.target.value)}
+                  maxLength={100}
                   className="bg-background"
                 />
                 <p className="text-xs text-muted-foreground">
