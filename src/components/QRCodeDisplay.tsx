@@ -29,8 +29,10 @@ const QRCodeDisplay = ({ eventCode, coupleName, partnerName, onClose }: QRCodeDi
 
   const handleDownload = () => {
     if (!canvasRef.current) return;
+    // Sanitize filenames - remove special characters that could cause issues
+    const sanitize = (str: string) => str.replace(/[^a-zA-Z0-9\s-]/g, '').replace(/\s+/g, '-').substring(0, 50);
     const link = document.createElement("a");
-    link.download = `${coupleName}-${partnerName}-qr-code.png`;
+    link.download = `${sanitize(coupleName)}-${sanitize(partnerName)}-qr-code.png`;
     link.href = canvasRef.current.toDataURL();
     link.click();
   };
