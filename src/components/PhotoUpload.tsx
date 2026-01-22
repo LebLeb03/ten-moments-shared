@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { X, Camera, Upload, Check, Loader2 } from "lucide-react";
 
@@ -25,8 +26,11 @@ const PhotoUpload = ({
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [caption, setCaption] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+
+  const MAX_CAPTION_LENGTH = 150;
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -67,11 +71,13 @@ const PhotoUpload = ({
       if (uploadError) throw uploadError;
 
       // Store the file path (not full URL) - signed URLs will be generated when viewing
+      const trimmedCaption = caption.trim();
       const { error: photoError } = await supabase.from("photos").insert({
         wedding_event_id: eventId,
         guest_id: guestId,
         image_url: fileName, // Store path, not URL
         guest_name: guestName,
+        caption: trimmedCaption.length > 0 ? trimmedCaption : null,
       });
 
       if (photoError) throw photoError;
@@ -114,18 +120,42 @@ const PhotoUpload = ({
           <div className="w-10" />
         </header>
 
-        <div className="flex-1 flex flex-col items-center justify-center p-6">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
           <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden shadow-xl mb-6">
             <img
               src={preview}
               alt="Preview"
               className="w-full h-full object-cover"
             />
+            {/* Caption preview overlay */}
+            {caption.trim() && (
+              <>
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                <div className="absolute bottom-0 left-0 right-0 p-4">
+                  <p className="text-white text-sm leading-relaxed">{caption}</p>
+                </div>
+              </>
+            )}
           </div>
 
-          <p className="text-center text-muted-foreground mb-8 max-w-xs">
-            This moment is permanent and cannot be changed. Are you ready to share it?
-          </p>
+          {/* Caption input */}
+          <div className="w-full max-w-sm mb-6">
+            <Textarea
+              placeholder="Add a caption (optional)"
+              value={caption}
+              onChange={(e) => {
+                if (e.target.value.length <= MAX_CAPTION_LENGTH) {
+                  setCaption(e.target.value);
+                }
+              }}
+              className="resize-none bg-muted/50 border-border/50 focus:border-primary"
+              rows={2}
+              disabled={uploading}
+            />
+            <p className="text-xs text-muted-foreground text-right mt-1">
+              {caption.length}/{MAX_CAPTION_LENGTH}
+            </p>
+          </div>
 
           <div className="flex gap-4">
             <Button
@@ -134,6 +164,7 @@ const PhotoUpload = ({
                 setShowConfirm(false);
                 setSelectedFile(null);
                 setPreview(null);
+                setCaption("");
               }}
               disabled={uploading}
               className="h-12 px-6"
@@ -214,7 +245,7 @@ const PhotoUpload = ({
         </div>
 
         <p className="text-center text-muted-foreground mt-8 max-w-xs text-sm">
-          Once shared, photos cannot be edited or deleted. Make it count.
+          Make it count — you can add a caption and delete if needed.
         </p>
       </div>
     </div>

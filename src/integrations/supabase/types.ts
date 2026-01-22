@@ -54,6 +54,7 @@ export type Database = {
       }
       photos: {
         Row: {
+          caption: string | null
           captured_at: string
           guest_id: string
           guest_name: string | null
@@ -62,6 +63,7 @@ export type Database = {
           wedding_event_id: string
         }
         Insert: {
+          caption?: string | null
           captured_at?: string
           guest_id: string
           guest_name?: string | null
@@ -70,6 +72,7 @@ export type Database = {
           wedding_event_id: string
         }
         Update: {
+          caption?: string | null
           captured_at?: string
           guest_id?: string
           guest_name?: string | null

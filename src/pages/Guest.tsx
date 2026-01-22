@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useGuestSession } from "@/hooks/useGuestSession";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Camera, Image as ImageIcon, Lock, ChevronUp, Leaf, Heart } from "lucide-react";
+import { Camera, Lock, ChevronUp, Leaf } from "lucide-react";
 import PhotoSwipeFeed from "@/components/PhotoSwipeFeed";
 import PhotoUpload from "@/components/PhotoUpload";
 
@@ -78,6 +78,10 @@ const Guest = () => {
   const handlePhotoUploaded = () => {
     fetchData();
     setShowUpload(false);
+  };
+
+  const handlePhotoDeleted = () => {
+    fetchData();
   };
 
   if (sessionLoading || loading) {
@@ -184,7 +188,11 @@ const Guest = () => {
       </header>
 
       {/* Swipe Feed */}
-      <PhotoSwipeFeed eventId={guestSession!.weddingEventId} />
+      <PhotoSwipeFeed 
+        eventId={guestSession!.weddingEventId}
+        currentGuestId={guestSession!.guestId}
+        onPhotoDeleted={handlePhotoDeleted}
+      />
 
       {/* Floating Capture Button */}
       {guestData.photos_remaining > 0 && (
