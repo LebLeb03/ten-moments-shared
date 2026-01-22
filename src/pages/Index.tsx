@@ -50,10 +50,10 @@ const Index = () => {
         </div>
 
         {/* Headline */}
-        <h1 className="font-display text-5xl md:text-6xl text-foreground mb-4 animate-slide-up">
-          Ten Moments
+        <h1 className="font-display text-4xl md:text-5xl text-foreground mb-4 animate-slide-up">
+          Caleb & Bre's
           <br />
-          That Matter
+          Wedding Moments
         </h1>
 
         <p className="text-muted-foreground text-lg md:text-xl max-w-md mb-12 animate-slide-up" style={{ animationDelay: "0.1s" }}>
