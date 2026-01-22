@@ -50,7 +50,7 @@ const Index = () => {
         </div>
 
         {/* Headline */}
-        <h1 className="font-display text-4xl md:text-5xl text-foreground mb-4 animate-slide-up">
+        <h1 className="font-display text-5xl md:text-6xl text-foreground mb-4 animate-slide-up">
           Caleb & Bre's
           <br />
           Wedding Moments
