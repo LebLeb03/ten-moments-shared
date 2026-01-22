@@ -184,11 +184,12 @@
   }
 }
 
-/* Swipe feed styles */
+/* Swipe feed styles - Instagram Reels-like */
 .swipe-container {
   scroll-snap-type: y mandatory;
   overflow-y: scroll;
   -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
 }
 
 .swipe-item {
@@ -204,4 +205,34 @@
 .hide-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+/* Floating animation for swipe hint */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translateY(-8px);
+    opacity: 0.8;
+  }
+}
+
+.animate-float {
+  animation: float 2s ease-in-out infinite;
+}
+
+/* Soft pulsing animation */
+@keyframes pulseSoft {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.animate-pulse-soft {
+  animation: pulseSoft 2s ease-in-out infinite;
 }
