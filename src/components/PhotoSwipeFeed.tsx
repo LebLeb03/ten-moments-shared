@@ -216,7 +216,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
         .single();
 
       if (!guestFetchError && guestData) {
-        const newRemaining = Math.min(guestData.photos_remaining + 1, 10);
+        const newRemaining = Math.min(guestData.photos_remaining + 1, 20);
         await supabase
           .from("guests")
           .update({ photos_remaining: newRemaining })
@@ -281,11 +281,21 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
             >
               <div className="relative w-full h-[calc(100vh-120px)] max-w-lg mx-auto">
                 {photo.signedUrl ? (
-                  <img
-                    src={photo.signedUrl}
-                    alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                    className="w-full h-full object-cover"
-                  />
+                  photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
+                    <video
+                      src={photo.signedUrl}
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                      loop
+                    />
+                  ) : (
+                    <img
+                      src={photo.signedUrl}
+                      alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
+                      className="w-full h-full object-cover"
+                    />
+                  )
                 ) : (
                   <div className="w-full h-full bg-muted flex items-center justify-center">
                     <ImageIcon className="w-16 h-16 text-muted-foreground" />

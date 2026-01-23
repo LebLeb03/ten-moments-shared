@@ -90,7 +90,7 @@ const JoinWedding = () => {
 
     toast({
       title: `Welcome to ${event.couple_name} & ${event.partner_name}'s wedding!`,
-      description: "You have 10 photos to share.",
+      description: "You have 20 moments to share.",
     });
 
     navigate("/guest");
@@ -119,7 +119,7 @@ const JoinWedding = () => {
               <Camera className="w-8 h-8 text-primary" />
             </div>
             <CardTitle className="font-display text-2xl">Guest Access</CardTitle>
-            <CardDescription>You'll have 10 photos to share</CardDescription>
+            <CardDescription>You'll have 20 moments to share</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleJoin} className="space-y-4">

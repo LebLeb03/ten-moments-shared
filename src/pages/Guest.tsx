@@ -144,7 +144,7 @@ const Guest = () => {
           {/* Photo Counter */}
           <div className="photo-counter mb-6">
             <Camera className="w-4 h-4" />
-            <span>{guestData.photos_remaining} photos remaining</span>
+            <span>{guestData.photos_remaining} moments remaining</span>
           </div>
 
           {/* Capture Button */}
