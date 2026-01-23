@@ -36,10 +36,13 @@ const PhotoUpload = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
+    const isImage = file.type.startsWith("image/");
+    const isVideo = file.type.startsWith("video/");
+    
+    if (!isImage && !isVideo) {
       toast({
         title: "Invalid file",
-        description: "Please select an image file.",
+        description: "Please select an image or video file.",
         variant: "destructive",
       });
       return;
@@ -116,17 +119,26 @@ const PhotoUpload = ({
           <Button variant="ghost" size="icon" onClick={onClose} disabled={uploading}>
             <X className="w-6 h-6" />
           </Button>
-          <h1 className="font-display text-lg">Confirm Photo</h1>
+          <h1 className="font-display text-lg">Confirm Moment</h1>
           <div className="w-10" />
         </header>
 
         <div className="flex-1 flex flex-col items-center justify-center p-6 overflow-y-auto">
           <div className="relative w-full max-w-sm aspect-[3/4] rounded-2xl overflow-hidden shadow-xl mb-6">
-            <img
-              src={preview}
-              alt="Preview"
-              className="w-full h-full object-cover"
-            />
+            {selectedFile?.type.startsWith("video/") ? (
+              <video
+                src={preview}
+                className="w-full h-full object-cover"
+                controls
+                playsInline
+              />
+            ) : (
+              <img
+                src={preview}
+                alt="Preview"
+                className="w-full h-full object-cover"
+              />
+            )}
             {/* Caption preview overlay */}
             {caption.trim() && (
               <>
@@ -208,7 +220,7 @@ const PhotoUpload = ({
         <input
           ref={fileInputRef}
           type="file"
-          accept="image/*"
+          accept="image/*,video/*"
           capture="environment"
           onChange={handleFileSelect}
           className="hidden"
@@ -216,7 +228,7 @@ const PhotoUpload = ({
 
         <div className="photo-counter mb-8">
           <Camera className="w-4 h-4" />
-          <span>{photosRemaining} photos remaining</span>
+          <span>{photosRemaining} moments remaining</span>
         </div>
 
         <div className="w-full max-w-sm space-y-4">
