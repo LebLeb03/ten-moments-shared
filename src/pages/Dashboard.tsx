@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf } from "lucide-react";
+import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2 } from "lucide-react";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import PhotoGrid from "@/components/PhotoGrid";
 
@@ -32,6 +32,7 @@ const Dashboard = () => {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [showQRCode, setShowQRCode] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [downloading, setDownloading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -125,6 +126,89 @@ const Dashboard = () => {
   const handleSignOut = async () => {
     await signOut();
     navigate("/");
+  };
+
+  const handleViewFeed = () => {
+    // Navigate to a couple's view of the feed
+    navigate(`/feed/${weddingEvent?.event_code}`);
+  };
+
+  const handleDownloadAll = async () => {
+    if (!weddingEvent) return;
+    
+    setDownloading(true);
+    try {
+      // Fetch all photos for this event
+      const { data: photos, error } = await supabase
+        .from("photos")
+        .select("image_url, guest_name, captured_at")
+        .eq("wedding_event_id", weddingEvent.id);
+
+      if (error) throw error;
+      if (!photos || photos.length === 0) {
+        toast({
+          title: "No photos",
+          description: "There are no photos to download yet.",
+        });
+        setDownloading(false);
+        return;
+      }
+
+      // Download each photo
+      for (let i = 0; i < photos.length; i++) {
+        const photo = photos[i];
+        const path = photo.image_url;
+        
+        // Get signed URL for download
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from("wedding-photos")
+          .createSignedUrl(path, 60);
+
+        if (signedError || !signedData) {
+          console.error("Error getting signed URL:", signedError);
+          continue;
+        }
+
+        // Fetch the file and trigger download
+        const response = await fetch(signedData.signedUrl);
+        const blob = await response.blob();
+        
+        // Create filename from guest name and timestamp
+        const extension = path.split('.').pop() || 'jpg';
+        const guestName = photo.guest_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'guest';
+        const timestamp = new Date(photo.captured_at).getTime();
+        const filename = `${guestName}_${timestamp}.${extension}`;
+        
+        // Trigger download
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        // Small delay between downloads to prevent browser blocking
+        if (i < photos.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      toast({
+        title: "Download complete",
+        description: `Downloaded ${photos.length} photos.`,
+      });
+    } catch (error) {
+      console.error("Download error:", error);
+      toast({
+        title: "Download failed",
+        description: "There was an error downloading photos.",
+        variant: "destructive",
+      });
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (authLoading || loading) {
@@ -301,26 +385,34 @@ const Dashboard = () => {
         </div>
 
         {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-4 animate-slide-up" style={{ animationDelay: "0.1s" }}>
+        <div className="grid grid-cols-3 gap-3 animate-slide-up" style={{ animationDelay: "0.1s" }}>
           <Button
             onClick={() => setShowQRCode(true)}
-            className="h-16 gradient-sage text-primary-foreground"
+            className="h-16 gradient-sage text-primary-foreground flex-col gap-1"
           >
-            <QrCode className="mr-2 h-5 w-5" />
-            Share QR Code
+            <QrCode className="h-5 w-5" />
+            <span className="text-xs">Share QR</span>
+          </Button>
+          <Button
+            onClick={handleViewFeed}
+            variant="outline"
+            className="h-16 border-primary text-primary hover:bg-primary/10 flex-col gap-1"
+          >
+            <Play className="h-5 w-5" />
+            <span className="text-xs">View Feed</span>
           </Button>
           <Button
             variant="outline"
-            className="h-16 border-secondary text-secondary hover:bg-secondary/10"
-            onClick={() => {
-              toast({
-                title: "Coming soon",
-                description: "Download functionality will be available soon.",
-              });
-            }}
+            className="h-16 border-secondary text-secondary hover:bg-secondary/10 flex-col gap-1"
+            onClick={handleDownloadAll}
+            disabled={downloading || guestStats.total_photos === 0}
           >
-            <Download className="mr-2 h-5 w-5" />
-            Download All
+            {downloading ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Download className="h-5 w-5" />
+            )}
+            <span className="text-xs">{downloading ? "Downloading..." : "Download"}</span>
           </Button>
         </div>
 

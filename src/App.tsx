@@ -8,6 +8,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import JoinWedding from "./pages/JoinWedding";
 import Guest from "./pages/Guest";
+import CoupleFeed from "./pages/CoupleFeed";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/join" element={<JoinWedding />} />
           <Route path="/guest" element={<Guest />} />
+          <Route path="/feed/:eventCode" element={<CoupleFeed />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
