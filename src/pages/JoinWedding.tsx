@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { z } from "zod";
 import { supabase } from "@/integrations/supabase/client";
 import { useGuestSession } from "@/hooks/useGuestSession";
@@ -23,13 +23,65 @@ const guestNameSchema = z.string()
   .transform(val => val?.trim() || null);
 
 const JoinWedding = () => {
-  const [eventCode, setEventCode] = useState("");
+  const [searchParams] = useSearchParams();
+  const codeFromUrl = searchParams.get("code");
+  const [eventCode, setEventCode] = useState(codeFromUrl?.toUpperCase() || "");
   const [guestName, setGuestName] = useState("");
   const [loading, setLoading] = useState(false);
   const { createGuestSession } = useGuestSession();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const autoJoinAttempted = useRef(false);
 
+  // Auto-join when code is provided via URL (QR scan)
+  useEffect(() => {
+    if (codeFromUrl && !autoJoinAttempted.current) {
+      autoJoinAttempted.current = true;
+      autoJoin(codeFromUrl.toUpperCase().trim());
+    }
+  }, [codeFromUrl]);
+
+  const autoJoin = async (code: string) => {
+    setLoading(true);
+    const codeResult = eventCodeSchema.safeParse(code);
+    if (!codeResult.success) {
+      setLoading(false);
+      return;
+    }
+
+    const { data: event, error: eventError } = await supabase
+      .from("wedding_events")
+      .select("*")
+      .eq("event_code", codeResult.data)
+      .maybeSingle();
+
+    if (eventError || !event) {
+      setLoading(false);
+      toast({
+        title: "Event not found",
+        description: "Please check the code and try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const result = await createGuestSession(event.id, null);
+    if (!result.success) {
+      setLoading(false);
+      toast({
+        title: "Error joining",
+        description: result.error || "Could not join the event.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: `Welcome to ${event.couple_name} & ${event.partner_name}'s wedding!`,
+      description: "You have 20 moments to share.",
+    });
+    navigate("/guest");
+  };
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
