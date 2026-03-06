@@ -133,8 +133,30 @@ const Dashboard = () => {
   };
 
   const handleViewFeed = () => {
-    // Navigate to a couple's view of the feed
     navigate(`/feed/${weddingEvent?.event_code}`);
+  };
+
+  const handleEditDate = () => {
+    if (weddingEvent) {
+      setNewDate(weddingEvent.wedding_date);
+      setEditingDate(true);
+    }
+  };
+
+  const handleSaveDate = async () => {
+    if (!weddingEvent || !newDate) return;
+    const { error } = await supabase
+      .from("wedding_events")
+      .update({ wedding_date: newDate })
+      .eq("id", weddingEvent.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setWeddingEvent({ ...weddingEvent, wedding_date: newDate });
+      toast({ title: "Date updated!" });
+    }
+    setEditingDate(false);
   };
 
   const handleDownloadAll = async () => {
