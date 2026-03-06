@@ -7,9 +7,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2, Pencil, Check, X } from "lucide-react";
+import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2, Pencil, Check, X, Trash2 } from "lucide-react";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import PhotoGrid from "@/components/PhotoGrid";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WeddingEvent {
   id: string;
@@ -33,6 +43,10 @@ const Dashboard = () => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [loading, setLoading] = useState(true);
   const [downloading, setDownloading] = useState(false);
+  const [showDeleteEvent, setShowDeleteEvent] = useState(false);
+  const [showDeleteAccount, setShowDeleteAccount] = useState(false);
+  const [deletingEvent, setDeletingEvent] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -159,12 +173,78 @@ const Dashboard = () => {
     setEditingDate(false);
   };
 
+  const handleDeleteEvent = async () => {
+    if (!weddingEvent) return;
+    setDeletingEvent(true);
+
+    try {
+      // Delete all photos from storage
+      const { data: photos } = await supabase
+        .from("photos")
+        .select("image_url")
+        .eq("wedding_event_id", weddingEvent.id);
+
+      if (photos && photos.length > 0) {
+        await supabase.storage
+          .from("wedding-photos")
+          .remove(photos.map((p) => p.image_url));
+      }
+
+      // Delete photos records
+      await supabase.from("photos").delete().eq("wedding_event_id", weddingEvent.id);
+
+      // Delete guests
+      await supabase.from("guests").delete().eq("wedding_event_id", weddingEvent.id);
+
+      // Delete event
+      const { error } = await supabase
+        .from("wedding_events")
+        .delete()
+        .eq("id", weddingEvent.id);
+
+      if (error) throw error;
+
+      setWeddingEvent(null);
+      setGuestStats({ total_guests: 0, total_photos: 0 });
+      toast({ title: "Event deleted", description: "Your wedding event has been removed." });
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setDeletingEvent(false);
+      setShowDeleteEvent(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!user) return;
+    setDeletingAccount(true);
+
+    try {
+      // Delete event data first if exists
+      if (weddingEvent) {
+        await handleDeleteEvent();
+      }
+
+      // Sign out (account deletion requires admin API, so we sign out and inform user)
+      await signOut();
+      toast({
+        title: "Signed out",
+        description: "Your event data has been deleted. Contact support to fully remove your account.",
+      });
+      navigate("/");
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setDeletingAccount(false);
+      setShowDeleteAccount(false);
+    }
+  };
+
   const handleDownloadAll = async () => {
     if (!weddingEvent) return;
     
     setDownloading(true);
     try {
-      // Fetch all photos for this event
       const { data: photos, error } = await supabase
         .from("photos")
         .select("image_url, guest_name, captured_at")
@@ -180,12 +260,10 @@ const Dashboard = () => {
         return;
       }
 
-      // Download each photo
       for (let i = 0; i < photos.length; i++) {
         const photo = photos[i];
         const path = photo.image_url;
         
-        // Get signed URL for download
         const { data: signedData, error: signedError } = await supabase.storage
           .from("wedding-photos")
           .createSignedUrl(path, 60);
@@ -195,17 +273,14 @@ const Dashboard = () => {
           continue;
         }
 
-        // Fetch the file and trigger download
         const response = await fetch(signedData.signedUrl);
         const blob = await response.blob();
         
-        // Create filename from guest name and timestamp
         const extension = path.split('.').pop() || 'jpg';
         const guestName = photo.guest_name?.replace(/[^a-zA-Z0-9]/g, '_') || 'guest';
         const timestamp = new Date(photo.captured_at).getTime();
         const filename = `${guestName}_${timestamp}.${extension}`;
         
-        // Trigger download
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -215,7 +290,6 @@ const Dashboard = () => {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        // Small delay between downloads to prevent browser blocking
         if (i < photos.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 300));
         }
@@ -275,15 +349,43 @@ const Dashboard = () => {
             </CardContent>
           </Card>
 
-          <div className="mt-4 text-center">
+          <div className="mt-6 flex flex-col items-center gap-2">
             <button
               onClick={handleSignOut}
               className="text-sm text-muted-foreground hover:text-primary transition-colors"
             >
               Sign out
             </button>
+            <button
+              onClick={() => setShowDeleteAccount(true)}
+              className="text-sm text-destructive/70 hover:text-destructive transition-colors"
+            >
+              Delete Account
+            </button>
           </div>
         </div>
+
+        <AlertDialog open={showDeleteAccount} onOpenChange={setShowDeleteAccount}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will delete all your event data and sign you out. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={deletingAccount}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDeleteAccount}
+                disabled={deletingAccount}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deletingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Delete Account
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
@@ -495,7 +597,76 @@ const Dashboard = () => {
           <h2 className="font-display text-2xl mb-4">Shared Memories</h2>
           <PhotoGrid eventId={weddingEvent.id} />
         </div>
+
+        {/* Danger Zone */}
+        <div className="pt-4 pb-8 space-y-3 animate-slide-up" style={{ animationDelay: "0.4s" }}>
+          <h2 className="font-display text-lg text-muted-foreground">Settings</h2>
+          <div className="flex flex-col gap-2">
+            <Button
+              variant="outline"
+              className="w-full justify-start border-destructive/30 text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteEvent(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Wedding Event
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full justify-start border-destructive/30 text-destructive hover:bg-destructive/10"
+              onClick={() => setShowDeleteAccount(true)}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete Account
+            </Button>
+          </div>
+        </div>
       </main>
+
+      {/* Delete Event Dialog */}
+      <AlertDialog open={showDeleteEvent} onOpenChange={setShowDeleteEvent}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this wedding event?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete your event, all guest data, and all {guestStats.total_photos} photos. This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingEvent}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteEvent}
+              disabled={deletingEvent}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingEvent ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete Event
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Account Dialog */}
+      <AlertDialog open={showDeleteAccount} onOpenChange={setShowDeleteAccount}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete your account?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete all your event data, photos, and sign you out. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAccount}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteAccount}
+              disabled={deletingAccount}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingAccount ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete Account
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
