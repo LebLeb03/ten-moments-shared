@@ -394,11 +394,14 @@ const Dashboard = () => {
               ) : (
                 <button className="text-sm text-muted-foreground flex items-center gap-1.5 hover:text-foreground transition-colors" onClick={handleEditDate}>
                   <Calendar className="w-3 h-3" />
-                  {new Date(weddingEvent.wedding_date + 'T00:00:00').toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
+                  {(() => {
+                    const [year, month, day] = weddingEvent.wedding_date.split('-').map(Number);
+                    return new Date(year, month - 1, day).toLocaleDateString("en-US", {
+                      month: "long",
+                      day: "numeric",
+                      year: "numeric",
+                    });
+                  })()}
                   <Pencil className="w-3 h-3 text-primary" />
                 </button>
               )}
