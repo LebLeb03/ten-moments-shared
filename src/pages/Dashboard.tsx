@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2 } from "lucide-react";
+import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2, Pencil, Check, X } from "lucide-react";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import PhotoGrid from "@/components/PhotoGrid";
 
