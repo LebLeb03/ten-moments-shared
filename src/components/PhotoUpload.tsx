@@ -14,6 +14,68 @@ interface PhotoUploadProps {
   onSuccess: () => void;
 }
 
+// Compress image client-side before uploading
+const compressImage = (file: File, maxWidth = 1920, quality = 0.8): Promise<File> => {
+  return new Promise((resolve) => {
+    // Skip compression for non-image files (videos)
+    if (!file.type.startsWith("image/")) {
+      resolve(file);
+      return;
+    }
+
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+    
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      
+      const canvas = document.createElement("canvas");
+      let { width, height } = img;
+
+      // Only downscale, never upscale
+      if (width > maxWidth) {
+        height = Math.round((height * maxWidth) / width);
+        width = maxWidth;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob || blob.size >= file.size) {
+            // If compression didn't help, use original
+            resolve(file);
+            return;
+          }
+          const compressed = new File([blob], file.name, {
+            type: "image/jpeg",
+            lastModified: Date.now(),
+          });
+          resolve(compressed);
+        },
+        "image/jpeg",
+        quality
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+
+    img.src = url;
+  });
+};
+
 const PhotoUpload = ({
   guestId,
   eventId,
@@ -25,6 +87,7 @@ const PhotoUpload = ({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState("");
   const [showConfirm, setShowConfirm] = useState(false);
   const [caption, setCaption] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -57,28 +120,38 @@ const PhotoUpload = ({
     if (!selectedFile) return;
 
     setUploading(true);
+    setUploadProgress("Preparing...");
 
     try {
-      // Sanitize filename - remove special characters
-      const sanitizedName = selectedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-      const fileName = `${eventId}/${guestId}/${Date.now()}-${sanitizedName}`;
+      // Compress image before upload
+      setUploadProgress("Optimizing...");
+      const processedFile = await compressImage(selectedFile);
+
+      // Sanitize filename
+      const sanitizedName = processedFile.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      const extension = processedFile.type === "image/jpeg" ? "jpg" : sanitizedName.split('.').pop() || 'jpg';
+      const fileName = `${eventId}/${guestId}/${Date.now()}.${extension}`;
+      
+      setUploadProgress("Uploading...");
       
       // Upload to storage
       const { data: uploadData, error: uploadError } = await supabase.storage
         .from("wedding-photos")
-        .upload(fileName, selectedFile, {
-          contentType: selectedFile.type,
+        .upload(fileName, processedFile, {
+          contentType: processedFile.type,
           upsert: false,
         });
 
       if (uploadError) throw uploadError;
 
-      // Store the file path (not full URL) - signed URLs will be generated when viewing
+      setUploadProgress("Saving...");
+
+      // Store the file path
       const trimmedCaption = caption.trim();
       const { error: photoError } = await supabase.from("photos").insert({
         wedding_event_id: eventId,
         guest_id: guestId,
-        image_url: fileName, // Store path, not URL
+        image_url: fileName,
         guest_name: guestName,
         caption: trimmedCaption.length > 0 ? trimmedCaption : null,
       });
@@ -109,6 +182,7 @@ const PhotoUpload = ({
         variant: "destructive",
       });
       setUploading(false);
+      setUploadProgress("");
     }
   };
 
@@ -191,7 +265,7 @@ const PhotoUpload = ({
               {uploading ? (
                 <>
                   <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Sharing...
+                  {uploadProgress}
                 </>
               ) : (
                 <>

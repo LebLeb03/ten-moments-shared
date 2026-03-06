@@ -27,6 +27,7 @@ interface Photo {
 
 interface PhotoWithSignedUrl extends Photo {
   signedUrl?: string;
+  loaded?: boolean;
 }
 
 interface PhotoSwipeFeedProps {
@@ -48,16 +49,12 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
 
   const MAX_CAPTION_LENGTH = 150;
 
-  // Generate signed URL for a photo path
   const getSignedUrl = useCallback(async (path: string): Promise<string | null> => {
-    // Check if it's already a full URL (legacy data)
-    if (path.startsWith('http')) {
-      return path;
-    }
+    if (path.startsWith('http')) return path;
     
     const { data, error } = await supabase.storage
       .from("wedding-photos")
-      .createSignedUrl(path, 3600); // 1 hour expiry
+      .createSignedUrl(path, 3600);
     
     if (error) {
       console.error("Error creating signed URL:", error);
@@ -66,7 +63,6 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     return data.signedUrl;
   }, []);
 
-  // Fetch photos and generate signed URLs
   const fetchPhotos = useCallback(async () => {
     const { data, error } = await supabase
       .from("photos")
@@ -75,11 +71,11 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
       .order("captured_at", { ascending: false });
 
     if (!error && data) {
-      // Generate signed URLs for all photos
       const photosWithUrls = await Promise.all(
         data.map(async (photo) => ({
           ...photo,
           signedUrl: await getSignedUrl(photo.image_url),
+          loaded: false,
         }))
       );
       setPhotos(photosWithUrls);
@@ -90,31 +86,20 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
   useEffect(() => {
     fetchPhotos();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel("photos-feed")
       .on(
         "postgres_changes",
-        {
-          event: "INSERT",
-          schema: "public",
-          table: "photos",
-          filter: `wedding_event_id=eq.${eventId}`,
-        },
+        { event: "INSERT", schema: "public", table: "photos", filter: `wedding_event_id=eq.${eventId}` },
         async (payload) => {
           const newPhoto = payload.new as Photo;
           const signedUrl = await getSignedUrl(newPhoto.image_url);
-          setPhotos((prev) => [{ ...newPhoto, signedUrl }, ...prev]);
+          setPhotos((prev) => [{ ...newPhoto, signedUrl, loaded: false }, ...prev]);
         }
       )
       .on(
         "postgres_changes",
-        {
-          event: "DELETE",
-          schema: "public",
-          table: "photos",
-          filter: `wedding_event_id=eq.${eventId}`,
-        },
+        { event: "DELETE", schema: "public", table: "photos", filter: `wedding_event_id=eq.${eventId}` },
         (payload) => {
           const deletedPhoto = payload.old as Photo;
           setPhotos((prev) => prev.filter((p) => p.id !== deletedPhoto.id));
@@ -122,12 +107,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
       )
       .on(
         "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "photos",
-          filter: `wedding_event_id=eq.${eventId}`,
-        },
+        { event: "UPDATE", schema: "public", table: "photos", filter: `wedding_event_id=eq.${eventId}` },
         (payload) => {
           const updatedPhoto = payload.new as Photo;
           setPhotos((prev) =>
@@ -151,7 +131,6 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
 
   const handleSaveCaption = async () => {
     if (!editingPhotoId) return;
-    
     setSaving(true);
     const trimmedCaption = editCaption.trim();
     
@@ -161,15 +140,9 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
       .eq("id", editingPhotoId);
 
     if (error) {
-      toast({
-        title: "Failed to update caption",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Failed to update caption", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Caption updated",
-      });
+      toast({ title: "Caption updated" });
     }
     
     setSaving(false);
@@ -179,7 +152,6 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
 
   const handleDeletePhoto = async () => {
     if (!deletePhotoId || !currentGuestId) return;
-    
     setDeleting(true);
     const photoToDelete = photos.find((p) => p.id === deletePhotoId);
     
@@ -190,25 +162,10 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     }
 
     try {
-      // Delete from storage first
-      const { error: storageError } = await supabase.storage
-        .from("wedding-photos")
-        .remove([photoToDelete.image_url]);
-
-      if (storageError) {
-        console.error("Storage delete error:", storageError);
-        // Continue anyway - the photo record will still be deleted
-      }
-
-      // Delete from database
-      const { error: dbError } = await supabase
-        .from("photos")
-        .delete()
-        .eq("id", deletePhotoId);
-
+      await supabase.storage.from("wedding-photos").remove([photoToDelete.image_url]);
+      const { error: dbError } = await supabase.from("photos").delete().eq("id", deletePhotoId);
       if (dbError) throw dbError;
 
-      // Restore photo credit to guest
       const { data: guestData, error: guestFetchError } = await supabase
         .from("guests")
         .select("photos_remaining")
@@ -217,28 +174,23 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
 
       if (!guestFetchError && guestData) {
         const newRemaining = Math.min(guestData.photos_remaining + 1, 20);
-        await supabase
-          .from("guests")
-          .update({ photos_remaining: newRemaining })
-          .eq("id", currentGuestId);
+        await supabase.from("guests").update({ photos_remaining: newRemaining }).eq("id", currentGuestId);
       }
 
-      toast({
-        title: "Photo deleted",
-        description: "Your photo credit has been restored.",
-      });
-
+      toast({ title: "Photo deleted", description: "Your photo credit has been restored." });
       onPhotoDeleted?.();
     } catch (error: any) {
-      toast({
-        title: "Failed to delete photo",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Failed to delete photo", description: error.message, variant: "destructive" });
     }
     
     setDeleting(false);
     setDeletePhotoId(null);
+  };
+
+  const handleImageLoad = (photoId: string) => {
+    setPhotos((prev) =>
+      prev.map((p) => (p.id === photoId ? { ...p, loaded: true } : p))
+    );
   };
 
   if (loading) {
@@ -268,7 +220,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     <>
       <div
         ref={containerRef}
-        className="flex-1 swipe-container hide-scrollbar"
+        className="flex-1 swipe-container hide-scrollbar bg-black"
       >
         {photos.map((photo, index) => {
           const isOwner = currentGuestId && photo.guest_id === currentGuestId;
@@ -277,132 +229,130 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
           return (
             <div
               key={photo.id}
-              className="swipe-item min-h-screen flex items-center justify-center px-0 py-2"
+              className="swipe-item h-screen w-full relative"
             >
-              <div className="relative w-full h-[calc(100vh-120px)] max-w-lg mx-auto">
-                {photo.signedUrl ? (
-                  photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
-                    <video
-                      src={photo.signedUrl}
-                      className="w-full h-full object-cover"
-                      controls
-                      playsInline
-                      loop
-                    />
-                  ) : (
+              {/* Full-bleed image/video */}
+              {photo.signedUrl ? (
+                photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
+                  <video
+                    src={photo.signedUrl}
+                    className="absolute inset-0 w-full h-full object-contain bg-black"
+                    controls
+                    playsInline
+                    loop
+                  />
+                ) : (
+                  <>
+                    {!photo.loaded && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black">
+                        <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
+                      </div>
+                    )}
                     <img
                       src={photo.signedUrl}
                       alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                      className="w-full h-full object-cover"
+                      className={`absolute inset-0 w-full h-full object-contain bg-black transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
+                      onLoad={() => handleImageLoad(photo.id)}
                     />
-                  )
-                ) : (
-                  <div className="w-full h-full bg-muted flex items-center justify-center">
-                    <ImageIcon className="w-16 h-16 text-muted-foreground" />
-                  </div>
-                )}
-                
-                {/* Gradient overlay for text */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
-                
-                {/* Photo info and caption */}
-                <div className="absolute bottom-0 left-0 right-0 p-4 pb-6">
-                  {/* Guest name and time */}
-                  <div className="flex items-center gap-2 mb-2">
-                    {photo.guest_name && (
-                      <p className="text-white font-semibold">
-                        {photo.guest_name}
-                      </p>
-                    )}
-                    <span className="text-white/60 text-sm">
-                      · {formatDistanceToNow(new Date(photo.captured_at), { addSuffix: true })}
-                    </span>
-                  </div>
-                  
-                  {/* Caption or edit mode */}
-                  {isEditing ? (
-                    <div className="space-y-2">
-                      <Textarea
-                        value={editCaption}
-                        onChange={(e) => {
-                          if (e.target.value.length <= MAX_CAPTION_LENGTH) {
-                            setEditCaption(e.target.value);
-                          }
-                        }}
-                        placeholder="Add a caption..."
-                        className="bg-black/50 border-white/20 text-white placeholder:text-white/50 resize-none"
-                        rows={2}
-                        disabled={saving}
-                      />
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/50 text-xs">
-                          {editCaption.length}/{MAX_CAPTION_LENGTH}
-                        </span>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingPhotoId(null);
-                              setEditCaption("");
-                            }}
-                            disabled={saving}
-                            className="text-white hover:bg-white/20"
-                          >
-                            <X className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            onClick={handleSaveCaption}
-                            disabled={saving}
-                            className="bg-primary text-primary-foreground"
-                          >
-                            {saving ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    photo.caption && (
-                      <p className="text-white/90 text-sm leading-relaxed">
-                        {photo.caption}
-                      </p>
-                    )
-                  )}
+                  </>
+                )
+              ) : (
+                <div className="absolute inset-0 bg-black flex items-center justify-center">
+                  <ImageIcon className="w-16 h-16 text-white/20" />
                 </div>
-
-                {/* Owner actions */}
-                {isOwner && !isEditing && (
-                  <div className="absolute bottom-4 right-4 flex gap-2">
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => handleEditCaption(photo)}
-                      className="bg-black/30 hover:bg-black/50 text-white h-9 w-9"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </Button>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      onClick={() => setDeletePhotoId(photo.id)}
-                      className="bg-black/30 hover:bg-destructive/80 text-white h-9 w-9"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                )}
-
-                {/* Photo number indicator */}
-                <div className="absolute top-4 right-4 bg-black/30 backdrop-blur-sm rounded-full px-3 py-1">
-                  <span className="text-white text-sm">
-                    {index + 1} / {photos.length}
+              )}
+              
+              {/* Gradient overlay for text readability */}
+              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
+              
+              {/* Photo info and caption */}
+              <div className="absolute bottom-0 left-0 right-0 p-5 pb-8">
+                <div className="flex items-center gap-2 mb-1.5">
+                  {photo.guest_name && (
+                    <p className="text-white font-semibold text-sm">
+                      {photo.guest_name}
+                    </p>
+                  )}
+                  <span className="text-white/50 text-xs">
+                    · {formatDistanceToNow(new Date(photo.captured_at), { addSuffix: true })}
                   </span>
                 </div>
+                
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editCaption}
+                      onChange={(e) => {
+                        if (e.target.value.length <= MAX_CAPTION_LENGTH) {
+                          setEditCaption(e.target.value);
+                        }
+                      }}
+                      placeholder="Add a caption..."
+                      className="bg-black/50 border-white/20 text-white placeholder:text-white/50 resize-none"
+                      rows={2}
+                      disabled={saving}
+                    />
+                    <div className="flex items-center justify-between">
+                      <span className="text-white/50 text-xs">
+                        {editCaption.length}/{MAX_CAPTION_LENGTH}
+                      </span>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => { setEditingPhotoId(null); setEditCaption(""); }}
+                          disabled={saving}
+                          className="text-white hover:bg-white/20"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          onClick={handleSaveCaption}
+                          disabled={saving}
+                          className="bg-primary text-primary-foreground"
+                        >
+                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  photo.caption && (
+                    <p className="text-white/90 text-sm leading-relaxed">
+                      {photo.caption}
+                    </p>
+                  )
+                )}
+              </div>
+
+              {/* Owner actions */}
+              {isOwner && !isEditing && (
+                <div className="absolute bottom-20 right-4 flex flex-col gap-2">
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => handleEditCaption(photo)}
+                    className="bg-black/40 hover:bg-black/60 text-white h-10 w-10 rounded-full"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={() => setDeletePhotoId(photo.id)}
+                    className="bg-black/40 hover:bg-destructive/80 text-white h-10 w-10 rounded-full"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              )}
+
+              {/* Photo counter */}
+              <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
+                <span className="text-white/80 text-xs font-medium">
+                  {index + 1} / {photos.length}
+                </span>
               </div>
             </div>
           );
