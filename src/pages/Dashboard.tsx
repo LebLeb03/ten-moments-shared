@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2 } from "lucide-react";
+import { Plus, QrCode, Image, Users, Download, LogOut, Calendar, Heart, Leaf, Play, Loader2, Pencil, Check, X } from "lucide-react";
 import QRCodeDisplay from "@/components/QRCodeDisplay";
 import PhotoGrid from "@/components/PhotoGrid";
 
@@ -40,6 +40,10 @@ const Dashboard = () => {
   const [coupleName, setCoupleName] = useState("");
   const [partnerName, setPartnerName] = useState("");
   const [weddingDate, setWeddingDate] = useState("");
+
+  // Edit date state
+  const [editingDate, setEditingDate] = useState(false);
+  const [newDate, setNewDate] = useState("");
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -129,8 +133,30 @@ const Dashboard = () => {
   };
 
   const handleViewFeed = () => {
-    // Navigate to a couple's view of the feed
     navigate(`/feed/${weddingEvent?.event_code}`);
+  };
+
+  const handleEditDate = () => {
+    if (weddingEvent) {
+      setNewDate(weddingEvent.wedding_date);
+      setEditingDate(true);
+    }
+  };
+
+  const handleSaveDate = async () => {
+    if (!weddingEvent || !newDate) return;
+    const { error } = await supabase
+      .from("wedding_events")
+      .update({ wedding_date: newDate })
+      .eq("id", weddingEvent.id);
+
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      setWeddingEvent({ ...weddingEvent, wedding_date: newDate });
+      toast({ title: "Date updated!" });
+    }
+    setEditingDate(false);
   };
 
   const handleDownloadAll = async () => {
@@ -349,14 +375,32 @@ const Dashboard = () => {
               <h1 className="font-display text-xl">
                 {weddingEvent.couple_name} & {weddingEvent.partner_name}
               </h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {new Date(weddingEvent.wedding_date).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
+              {editingDate ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="h-7 text-sm w-auto bg-background"
+                  />
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSaveDate}>
+                    <Check className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingDate(false)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground flex items-center gap-1 group cursor-pointer" onClick={handleEditDate}>
+                  <Calendar className="w-3 h-3" />
+                  {new Date(weddingEvent.wedding_date).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </p>
+              )}
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={handleSignOut}>
