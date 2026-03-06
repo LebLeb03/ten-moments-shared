@@ -375,14 +375,32 @@ const Dashboard = () => {
               <h1 className="font-display text-xl">
                 {weddingEvent.couple_name} & {weddingEvent.partner_name}
               </h1>
-              <p className="text-sm text-muted-foreground flex items-center gap-1">
-                <Calendar className="w-3 h-3" />
-                {new Date(weddingEvent.wedding_date).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                })}
-              </p>
+              {editingDate ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    type="date"
+                    value={newDate}
+                    onChange={(e) => setNewDate(e.target.value)}
+                    className="h-7 text-sm w-auto bg-background"
+                  />
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSaveDate}>
+                    <Check className="w-3 h-3" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingDate(false)}>
+                    <X className="w-3 h-3" />
+                  </Button>
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground flex items-center gap-1 group cursor-pointer" onClick={handleEditDate}>
+                  <Calendar className="w-3 h-3" />
+                  {new Date(weddingEvent.wedding_date).toLocaleDateString("en-US", {
+                    month: "long",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
+                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </p>
+              )}
             </div>
           </div>
           <Button variant="ghost" size="icon" onClick={handleSignOut}>
