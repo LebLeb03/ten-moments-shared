@@ -376,30 +376,31 @@ const Dashboard = () => {
                 {weddingEvent.couple_name} & {weddingEvent.partner_name}
               </h1>
               {editingDate ? (
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 mt-1">
                   <Input
                     type="date"
                     value={newDate}
                     onChange={(e) => setNewDate(e.target.value)}
-                    className="h-7 text-sm w-auto bg-background"
+                    className="h-8 text-sm w-40 bg-background"
+                    autoFocus
                   />
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={handleSaveDate}>
-                    <Check className="w-3 h-3" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-primary" onClick={handleSaveDate}>
+                    <Check className="w-4 h-4" />
                   </Button>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setEditingDate(false)}>
-                    <X className="w-3 h-3" />
+                  <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => setEditingDate(false)}>
+                    <X className="w-4 h-4" />
                   </Button>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground flex items-center gap-1 group cursor-pointer" onClick={handleEditDate}>
+                <button className="text-sm text-muted-foreground flex items-center gap-1.5 hover:text-foreground transition-colors" onClick={handleEditDate}>
                   <Calendar className="w-3 h-3" />
-                  {new Date(weddingEvent.wedding_date).toLocaleDateString("en-US", {
+                  {new Date(weddingEvent.wedding_date + 'T00:00:00').toLocaleDateString("en-US", {
                     month: "long",
                     day: "numeric",
                     year: "numeric",
                   })}
-                  <Pencil className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </p>
+                  <Pencil className="w-3 h-3 text-primary" />
+                </button>
               )}
             </div>
           </div>
