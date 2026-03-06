@@ -41,6 +41,10 @@ const Dashboard = () => {
   const [partnerName, setPartnerName] = useState("");
   const [weddingDate, setWeddingDate] = useState("");
 
+  // Edit date state
+  const [editingDate, setEditingDate] = useState(false);
+  const [newDate, setNewDate] = useState("");
+
   useEffect(() => {
     if (!authLoading && !user) {
       navigate("/auth");
