@@ -254,7 +254,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
                         <img
                           src={photo.signedUrl}
                           alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                          className={`w-full h-full object-cover transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
+                          className={`w-full h-full object-contain transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
                           onLoad={() => handleImageLoad(photo.id)}
                         />
                       </>
