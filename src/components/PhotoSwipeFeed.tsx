@@ -232,7 +232,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
               className="swipe-item h-screen w-full flex flex-col items-center justify-center px-4 py-6"
             >
               {/* Framed photo card */}
-              <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border">
+              <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
                 {/* Image container */}
                 <div className="relative aspect-[3/4] w-full">
                   {photo.signedUrl ? (
