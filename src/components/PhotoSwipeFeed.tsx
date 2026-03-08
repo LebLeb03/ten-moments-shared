@@ -234,7 +234,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
               {/* Framed photo card */}
               <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
                 {/* Image container */}
-                <div className="relative aspect-[3/4] w-full">
+                <div className="relative aspect-[3/4] w-full bg-muted/30">
                   {photo.signedUrl ? (
                     photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
                       <video
