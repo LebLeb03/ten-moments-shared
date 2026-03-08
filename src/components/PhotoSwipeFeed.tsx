@@ -232,9 +232,9 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
               className="swipe-item h-screen w-full flex flex-col items-center justify-center px-4 py-6"
             >
               {/* Framed photo card */}
-              <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border">
+              <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
                 {/* Image container */}
-                <div className="relative aspect-[3/4] w-full">
+                <div className="relative aspect-[3/4] w-full bg-muted/30">
                   {photo.signedUrl ? (
                     photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
                       <video
@@ -254,7 +254,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
                         <img
                           src={photo.signedUrl}
                           alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                          className={`w-full h-full object-cover transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
+                          className={`w-full h-full object-contain transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
                           onLoad={() => handleImageLoad(photo.id)}
                         />
                       </>
