@@ -220,7 +220,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     <>
       <div
         ref={containerRef}
-        className="flex-1 swipe-container hide-scrollbar bg-black"
+        className="flex-1 swipe-container hide-scrollbar bg-background"
       >
         {photos.map((photo, index) => {
           const isOwner = currentGuestId && photo.guest_id === currentGuestId;
@@ -229,130 +229,130 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
           return (
             <div
               key={photo.id}
-              className="swipe-item h-screen w-full relative"
+              className="swipe-item h-screen w-full flex flex-col items-center justify-center px-4 py-6"
             >
-              {/* Full-bleed image/video */}
-              {photo.signedUrl ? (
-                photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
-                  <video
-                    src={photo.signedUrl}
-                    className="absolute inset-0 w-full h-full object-contain bg-black"
-                    controls
-                    playsInline
-                    loop
-                  />
-                ) : (
-                  <>
-                    {!photo.loaded && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black">
-                        <Loader2 className="w-8 h-8 text-white/40 animate-spin" />
-                      </div>
-                    )}
-                    <img
-                      src={photo.signedUrl}
-                      alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                      className={`absolute inset-0 w-full h-full object-contain bg-black transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
-                      onLoad={() => handleImageLoad(photo.id)}
-                    />
-                  </>
-                )
-              ) : (
-                <div className="absolute inset-0 bg-black flex items-center justify-center">
-                  <ImageIcon className="w-16 h-16 text-white/20" />
-                </div>
-              )}
-              
-              {/* Gradient overlay for text readability */}
-              <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-              
-              {/* Photo info and caption */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 pb-8">
-                <div className="flex items-center gap-2 mb-1.5">
-                  {photo.guest_name && (
-                    <p className="text-white font-semibold text-sm">
-                      {photo.guest_name}
-                    </p>
+              {/* Framed photo card */}
+              <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border">
+                {/* Image container */}
+                <div className="relative aspect-[3/4] w-full">
+                  {photo.signedUrl ? (
+                    photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
+                      <video
+                        src={photo.signedUrl}
+                        className="w-full h-full object-cover"
+                        controls
+                        playsInline
+                        loop
+                      />
+                    ) : (
+                      <>
+                        {!photo.loaded && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+                          </div>
+                        )}
+                        <img
+                          src={photo.signedUrl}
+                          alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
+                          className={`w-full h-full object-cover transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
+                          onLoad={() => handleImageLoad(photo.id)}
+                        />
+                      </>
+                    )
+                  ) : (
+                    <div className="w-full h-full bg-muted flex items-center justify-center">
+                      <ImageIcon className="w-16 h-16 text-muted-foreground/30" />
+                    </div>
                   )}
-                  <span className="text-white/50 text-xs">
-                    · {formatDistanceToNow(new Date(photo.captured_at), { addSuffix: true })}
-                  </span>
+
+                  {/* Photo counter pill */}
+                  <div className="absolute top-3 right-3 bg-foreground/60 backdrop-blur-sm rounded-full px-2.5 py-1">
+                    <span className="text-background text-xs font-medium">
+                      {index + 1} / {photos.length}
+                    </span>
+                  </div>
+
+                  {/* Owner actions */}
+                  {isOwner && !isEditing && (
+                    <div className="absolute bottom-3 right-3 flex gap-2">
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleEditCaption(photo)}
+                        className="bg-foreground/40 hover:bg-foreground/60 text-background h-9 w-9 rounded-full"
+                      >
+                        <Edit2 className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => setDeletePhotoId(photo.id)}
+                        className="bg-foreground/40 hover:bg-destructive/80 text-background h-9 w-9 rounded-full"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  )}
                 </div>
-                
-                {isEditing ? (
-                  <div className="space-y-2">
-                    <Textarea
-                      value={editCaption}
-                      onChange={(e) => {
-                        if (e.target.value.length <= MAX_CAPTION_LENGTH) {
-                          setEditCaption(e.target.value);
-                        }
-                      }}
-                      placeholder="Add a caption..."
-                      className="bg-black/50 border-white/20 text-white placeholder:text-white/50 resize-none"
-                      rows={2}
-                      disabled={saving}
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-white/50 text-xs">
-                        {editCaption.length}/{MAX_CAPTION_LENGTH}
-                      </span>
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => { setEditingPhotoId(null); setEditCaption(""); }}
-                          disabled={saving}
-                          className="text-white hover:bg-white/20"
-                        >
-                          <X className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          onClick={handleSaveCaption}
-                          disabled={saving}
-                          className="bg-primary text-primary-foreground"
-                        >
-                          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                        </Button>
+
+                {/* Info section below image */}
+                <div className="p-4">
+                  <div className="flex items-center gap-2 mb-1">
+                    {photo.guest_name && (
+                      <p className="font-semibold text-sm text-foreground">
+                        {photo.guest_name}
+                      </p>
+                    )}
+                    <span className="text-muted-foreground text-xs">
+                      · {formatDistanceToNow(new Date(photo.captured_at), { addSuffix: true })}
+                    </span>
+                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-2 mt-2">
+                      <Textarea
+                        value={editCaption}
+                        onChange={(e) => {
+                          if (e.target.value.length <= MAX_CAPTION_LENGTH) {
+                            setEditCaption(e.target.value);
+                          }
+                        }}
+                        placeholder="Add a caption..."
+                        className="resize-none text-sm"
+                        rows={2}
+                        disabled={saving}
+                      />
+                      <div className="flex items-center justify-between">
+                        <span className="text-muted-foreground text-xs">
+                          {editCaption.length}/{MAX_CAPTION_LENGTH}
+                        </span>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => { setEditingPhotoId(null); setEditCaption(""); }}
+                            disabled={saving}
+                          >
+                            <X className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSaveCaption}
+                            disabled={saving}
+                          >
+                            {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ) : (
-                  photo.caption && (
-                    <p className="text-white/90 text-sm leading-relaxed">
-                      {photo.caption}
-                    </p>
-                  )
-                )}
-              </div>
-
-              {/* Owner actions */}
-              {isOwner && !isEditing && (
-                <div className="absolute bottom-20 right-4 flex flex-col gap-2">
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => handleEditCaption(photo)}
-                    className="bg-black/40 hover:bg-black/60 text-white h-10 w-10 rounded-full"
-                  >
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    onClick={() => setDeletePhotoId(photo.id)}
-                    className="bg-black/40 hover:bg-destructive/80 text-white h-10 w-10 rounded-full"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  ) : (
+                    photo.caption && (
+                      <p className="text-muted-foreground text-sm leading-relaxed">
+                        {photo.caption}
+                      </p>
+                    )
+                  )}
                 </div>
-              )}
-
-              {/* Photo counter */}
-              <div className="absolute top-4 right-4 bg-black/40 backdrop-blur-sm rounded-full px-3 py-1">
-                <span className="text-white/80 text-xs font-medium">
-                  {index + 1} / {photos.length}
-                </span>
               </div>
             </div>
           );
