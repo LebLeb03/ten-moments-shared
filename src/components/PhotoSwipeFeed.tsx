@@ -220,7 +220,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     <>
       <div
         ref={containerRef}
-        className="flex-1 overflow-y-auto hide-scrollbar bg-background pt-[60px] pb-6 px-4 space-y-6"
+        className="flex-1 overflow-y-auto hide-scrollbar bg-background pt-32 pb-6 px-4 space-y-6"
       >
         {photos.map((photo, index) => {
           const isOwner = currentGuestId && photo.guest_id === currentGuestId;
