@@ -220,7 +220,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     <>
       <div
         ref={containerRef}
-        className="flex-1 swipe-container hide-scrollbar bg-background"
+        className="flex-1 overflow-y-auto hide-scrollbar bg-background py-6 px-4 space-y-6"
       >
         {photos.map((photo, index) => {
           const isOwner = currentGuestId && photo.guest_id === currentGuestId;
@@ -229,7 +229,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
           return (
             <div
               key={photo.id}
-              className="swipe-item h-screen w-full flex flex-col items-center justify-center px-4 py-6"
+              className="w-full flex justify-center"
             >
               {/* Framed photo card */}
               <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
