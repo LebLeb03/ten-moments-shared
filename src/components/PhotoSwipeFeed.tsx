@@ -220,7 +220,7 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
     <>
       <div
         ref={containerRef}
-        className="flex-1 swipe-container hide-scrollbar bg-background"
+        className="flex-1 overflow-y-auto hide-scrollbar bg-background py-6 px-4 space-y-6"
       >
         {photos.map((photo, index) => {
           const isOwner = currentGuestId && photo.guest_id === currentGuestId;
@@ -229,48 +229,12 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
           return (
             <div
               key={photo.id}
-              className="swipe-item h-screen w-full flex flex-col items-center justify-center px-4 py-6"
+              className="w-full flex justify-center"
             >
               {/* Framed photo card */}
               <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
                 {/* Image container */}
                 <div className="relative aspect-[3/4] w-full bg-muted/30">
-                  {photo.signedUrl ? (
-                    photo.image_url.match(/\.(mp4|mov|webm|avi|mkv)$/i) ? (
-                      <video
-                        src={photo.signedUrl}
-                        className="w-full h-full object-cover"
-                        controls
-                        playsInline
-                        loop
-                      />
-                    ) : (
-                      <>
-                        {!photo.loaded && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-muted">
-                            <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
-                          </div>
-                        )}
-                        <img
-                          src={photo.signedUrl}
-                          alt={photo.guest_name ? `Photo by ${photo.guest_name}` : "Wedding photo"}
-                          className={`w-full h-full object-contain transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
-                          onLoad={() => handleImageLoad(photo.id)}
-                        />
-                      </>
-                    )
-                  ) : (
-                    <div className="w-full h-full bg-muted flex items-center justify-center">
-                      <ImageIcon className="w-16 h-16 text-muted-foreground/30" />
-                    </div>
-                  )}
-
-                  {/* Photo counter pill */}
-                  <div className="absolute top-3 right-3 bg-foreground/60 backdrop-blur-sm rounded-full px-2.5 py-1">
-                    <span className="text-background text-xs font-medium">
-                      {index + 1} / {photos.length}
-                    </span>
-                  </div>
 
                   {/* Owner actions */}
                   {isOwner && !isEditing && (
