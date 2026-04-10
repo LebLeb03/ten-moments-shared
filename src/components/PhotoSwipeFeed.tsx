@@ -235,6 +235,24 @@ const PhotoSwipeFeed = ({ eventId, currentGuestId, onPhotoDeleted }: PhotoSwipeF
               <div className="relative w-full max-w-md rounded-2xl overflow-hidden bg-card border border-border shadow-none">
                 {/* Image container */}
                 <div className="relative aspect-[3/4] w-full bg-muted/30">
+                  {!photo.loaded && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 text-muted-foreground animate-spin" />
+                    </div>
+                  )}
+                  {photo.signedUrl ? (
+                    <img
+                      src={photo.signedUrl}
+                      alt={photo.caption || "Wedding moment"}
+                      className={`w-full h-full object-contain transition-opacity duration-300 ${photo.loaded ? 'opacity-100' : 'opacity-0'}`}
+                      onLoad={() => handleImageLoad(photo.id)}
+                      loading={index < 2 ? "eager" : "lazy"}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                      <ImageIcon className="w-10 h-10 text-muted-foreground" />
+                    </div>
+                  )}
 
                   {/* Owner actions */}
                   {isOwner && !isEditing && (
